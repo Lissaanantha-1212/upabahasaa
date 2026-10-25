@@ -1,0 +1,97 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. DATA MAHASISWA
+model Mahasiswa {
+  nim                  String                 @id @db.VarChar(20)
+  nama                 String                 @db.VarChar(100)
+  prodi                String                 @db.VarChar(50)
+  jurusan              String                 @db.VarChar(50)
+  angkatan             Int
+  semester             Int                    @default(1)
+  nomorWa              String?                @db.VarChar(20)
+  pesertaJadwal        PesertaJadwal[]
+  hasilTes             HasilTes[]
+  pendaftaranRemedial PendaftaranRemedial[]
+  laporanKeluhan       LaporanKeluhan[]
+}
+
+// 2. LOG & MASTER PENJADWALAN
+model JadwalTes {
+  id            Int             @id @default(autoincrement())
+  tanggal       DateTime        @db.Date
+  sesi          String          @db.VarChar(50) // Sesi 1 (08.00-10.00), Sesi 2, Sesi 3
+  lab           String          @db.VarChar(10) // Lab A / Lab B (Kapasitas max 30)
+  jenisTes      String          @db.VarChar(30) // SSPECT, TOEFL_TEST, TOEFL_REMEDIAL, KURSUS
+  isLocked      Boolean         @default(false) // Pengunci agar kelas tidak ter-plot ganda
+  dibuatOleh    String?         @db.VarChar(50) // Staff penanggung jawab (Log Staff)
+  pesertaJadwal PesertaJadwal[]
+  hasilTes      HasilTes[]
+}
+
+model PesertaJadwal {
+  id        Int       @id @default(autoincrement())
+  idJadwal  Int
+  nim       String    @db.VarChar(20)
+  jadwal    JadwalTes @relation(fields: [idJadwal], references: [id], onDelete: Cascade)
+  mahasiswa Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+}
+
+// 3. HASIL TES & KALKULASI (SSPECT, TOEFL, TOEIC)
+model HasilTes {
+  id            Int       @id @default(autoincrement())
+  nim           String    @db.VarChar(20)
+  idJadwal      Int?
+  jenisTes      String    @db.VarChar(20) // SSPECT, TOEFL, TOEIC
+  nomorKomputer Int?      // Untuk fitur bind data susulan
+  sec1Listening Int?      // Raw score / converted
+  sec2Structure Int?
+  sec3Reading   Int?
+  totalSkor     Int       // Hasil Kalkulasi Tabel TOEFL / Skor SSPECT
+  statusLulus   Boolean   @default(false) // Hijau (Lulus) / Merah (Tidak Lulus)
+  statusApprove Boolean   @default(false) // Approval Kepala UPA
+  tanggalUpload DateTime  @default(now())
+  mahasiswa     Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+  jadwal        JadwalTes? @relation(fields: [idJadwal], references: [id])
+}
+
+// 4. PENDAFTARAN REMEDIAL (Mahasiswa via Web Utama)
+model PendaftaranRemedial {
+  id            Int       @id @default(autoincrement())
+  nim           String    @db.VarChar(20)
+  tanggalDaftar DateTime  @default(now())
+  statusJadwal  Boolean   @default(false) // True jika sudah dimasukkan staff ke jadwal
+  mahasiswa     Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+}
+
+// 5. LAYANAN KELUHAN & TRACKING (Mahasiswa & Staff)
+model LaporanKeluhan {
+  id             Int      @id @default(autoincrement())
+  nim            String   @db.VarChar(20)
+  kategori       String   @db.VarChar(50) // Kesalahan Nama, Skor 0, Belum Dapet Jadwal, dll.
+  tanggalUjian   DateTime? @db.Date
+  sesiUjian      String?  @db.VarChar(20)
+  nomorKomputer  Int?
+  deskripsi      String   @db.Text
+  statusLaporan  String   @default("DIPROSES") // DIPROSES / SELESAI
+  tanggapanStaff String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  mahasiswa      Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+}
+
+// 6. KONTEN PORTAL (Berita, Pengumuman, Galeri, E-Book, Jurnal)
+model KontenPortal {
+  id         Int      @id @default(autoincrement())
+  kategori   String   @db.VarChar(30) // BERITA, PENGUMUMAN, GALERI, EBOOK, JURNAL
+  judul      String   @db.VarChar(255)
+  isi        String?  @db.Text
+  fileUrl    String?  @db.VarChar(255) // Link file PDF/Gambar
+  createdAt  DateTime @default(now())
+}

@@ -14,7 +14,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
-const API_URL = 'http://localhost:3000/api/jadwal';
+const API_URL = '/api';
 
 const JadwalTest = () => {
   const [namaKelasInput, setNamaKelasInput] = useState('');

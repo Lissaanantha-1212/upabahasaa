@@ -1,14 +1,11 @@
 import { RouterProvider } from 'react-router-dom';
 
-// routing
-import router from 'routes';
+// routing (ubah menjadi path relatif ./routes)
+import router from './routes';
 
-// project imports
-import NavigationScroll from 'layout/NavigationScroll';
-
-import ThemeCustomization from 'themes';
-
-// auth provider
+// project imports (ubah menjadi path relatif ./layout dan ./themes)
+import NavigationScroll from './layout/NavigationScroll';
+import ThemeCustomization from './themes';
 
 // ==============================|| APP ||============================== //
 

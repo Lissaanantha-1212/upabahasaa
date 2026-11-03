@@ -4,7 +4,7 @@ const app = express();
 
 app.use(express.json());
 
-// Panggil rute jadwal yang sudah kita buat
+// Panggil rute jadwal
 const jadwalRoutes = require('../routes/jadwalRoutes');
 app.use('/api/jadwal', jadwalRoutes);
 

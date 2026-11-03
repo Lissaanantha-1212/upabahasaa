@@ -1,0 +1,74 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. DATA MAHASISWA
+model Mahasiswa {
+  nim             String               @id @db.VarChar(20)
+  nama            String               @db.VarChar(100)
+  prodi           String               @db.VarChar(100)
+  jurusan         String               @db.VarChar(100)
+  angkatan        Int
+  semester        Int                  @default(1)
+  nomorWa         String?              @db.VarChar(20)
+  pesertaJadwal   PesertaJadwal[]
+  hasilTes        HasilTes[]
+  pendaftaranRemedial PendaftaranRemedial[]
+}
+
+// 2. LOG & MASTER PENJADWALAN
+model JadwalTes {
+  id              Int             @id @default(autoincrement())
+  kelas           String?         @db.VarChar(50)
+  tanggal         DateTime        @db.Date
+  sesi            String          @db.VarChar(100)
+  lab             String          @db.VarChar(100)
+  jenisTes        String          @db.VarChar(30)
+  isLocked        Boolean         @default(false)
+  dibuatOleh      String?         @db.VarChar(50)
+  createdAt       DateTime        @default(now())
+  pesertaJadwal   PesertaJadwal[]
+  hasilTes        HasilTes[]
+}
+
+model PesertaJadwal {
+  id          Int       @id @default(autoincrement())
+  idJadwal    Int
+  nim         String    @db.VarChar(20)
+  idMeja      String?   @db.VarChar(20)
+  jadwal      JadwalTes @relation(fields: [idJadwal], references: [id], onDelete: Cascade)
+  mahasiwa    Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+}
+
+// 3. HASIL TES & REKAPITULASI (Mendukung Arsip Tahun & Berbagai Jenis Ujian)
+model HasilTes {
+  id              Int       @id @default(autoincrement())
+  nim             String    @db.VarChar(20)
+  idJadwal        Int?
+  tahunArsip      String    @default("2024") @db.VarChar(4) // Menyimpan kategori tahun folder arsip (2024, 2025, dst)
+  jenisTes        String    @db.VarChar(30) // sspect, latihan_toefl, test_toefl, toeic, dll
+  nomorKomputer   Int?
+  sec1Listening   Int?
+  sec2Structure   Int?
+  sec3Reading     Int?
+  totalSkor       Int?      // Skor akhir (misal: SSPECT / TOEFL / TOEIC)
+  statusLulus     Boolean   @default(false)
+  statusApprove   Boolean   @default(false)
+  tanggalUpload   DateTime  @default(now())
+  mahasiswa       Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+  jadwal          JadwalTes? @relation(fields: [idJadwal], references: [id])
+}
+
+// 4. PENDAFTARAN REMEDIAL
+model PendaftaranRemedial {
+  id            Int       @id @default(autoincrement())
+  nim           String    @db.VarChar(20)
+  tanggalDaftar DateTime  @default(now())
+  statusJadwal  Boolean   @default(false)
+  mahasiswa     Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+}

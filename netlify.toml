@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
+  command = "npm run build && npx prisma generate"
+  publish = "dist" # Sesuaikan dengan folder build frontend-mu (misal: build atau dist)
 
 [functions]
   directory = "functions"

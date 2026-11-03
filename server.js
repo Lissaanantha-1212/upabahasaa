@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// Izinkan akses CORS dari port frontend berapapun (3000, 3001, 3002, dst)[cite: 21]
+// Izinkan akses CORS dari port frontend berapapun
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -11,12 +11,12 @@ app.use(cors({
 
 app.use(express.json());
 
-// Import File Routes[cite: 21]
+// Import File Routes
 const jadwalRoutes = require('./routes/jadwalRoutes');
 const hasilTesRoutes = require('./routes/hasilTesRoutes');
 const rekapRoutes = require('./routes/rekapRoutes');
 
-// Daftarkan Endpoint API[cite: 21]
+// Daftarkan Endpoint API
 app.use('/api/jadwal', jadwalRoutes);
 app.use('/api/hasil-tes', hasilTesRoutes);
 app.use('/api/rekap', rekapRoutes);

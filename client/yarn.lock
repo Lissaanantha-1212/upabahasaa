@@ -4133,7 +4133,7 @@ utrie@^1.0.2:
   dependencies:
     base64-arraybuffer "^1.0.2"
 
-vite-jsconfig-paths@2.0.1:
+vite-jsconfig-paths@^2.0.1:
   version "2.0.1"
   resolved "https://registry.npmjs.org/vite-jsconfig-paths/-/vite-jsconfig-paths-2.0.1.tgz"
   integrity sha512-rabcTTfKs0MdAsQWcZjbIMo5fcp6jthZce7uFEPgVPgpSY+RNOwjzIJOPES6cB/GJZLSoLGfHM9kt5HNmJvp7A==

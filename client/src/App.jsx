@@ -1,22 +1,17 @@
 import { RouterProvider } from 'react-router-dom';
-
-// routing (ubah menjadi path relatif ./routes)
 import router from './routes';
-
-// project imports (ubah menjadi path relatif ./layout dan ./themes)
 import NavigationScroll from './layout/NavigationScroll';
 import ThemeCustomization from './themes';
-
-// ==============================|| APP ||============================== //
+import { ConfigProvider } from './contexts/ConfigContext';
 
 export default function App() {
   return (
-    <ThemeCustomization>
-      <NavigationScroll>
-        <>
+    <ConfigProvider>
+      <ThemeCustomization>
+        <NavigationScroll>
           <RouterProvider router={router} />
-        </>
-      </NavigationScroll>
-    </ThemeCustomization>
+        </NavigationScroll>
+      </ThemeCustomization>
+    </ConfigProvider>
   );
 }

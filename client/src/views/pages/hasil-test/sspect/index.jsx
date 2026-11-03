@@ -1,171 +1,178 @@
 import React, { useState } from 'react';
 import { 
-  Typography, Grid, Button, Paper, Box, Alert, 
-  IconButton, Card, TextField, Chip,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+  Box, 
+  Button, 
+  Card, 
+  CardContent, 
+  Grid, 
+  MenuItem, 
+  TextField, 
+  Typography, 
+  Paper, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  IconButton, 
+  Alert,
+  Chip 
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import MainCard from 'ui-component/cards/MainCard';
+import { IconUpload, IconTrash, IconCheck, IconAlertCircle } from '@tabler/icons-react';
 
-const HasilTestSSPECT = () => {
-  const [fileLabA, setFileLabA] = useState(null);
-  const [fileLabB, setFileLabB] = useState(null);
-  const [hasilMapping, setHasilMapping] = useState([]);
-  const [unboundMhs, setUnboundMhs] = useState([]);
-  const [inputNimBind, setInputNimBind] = useState({});
+export default function UploadHasilTestSSPECT() {
+  const [lab, setLab] = useState('Lab A');
+  const [sesi, setSesi] = useState('1');
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [fileMeta, setFileMeta] = useState({ date: '', time: '' });
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isMatched, setIsMatched] = useState(false);
+  const [processedDatabase, setProcessedDatabase] = useState([]);
 
-  const handleUpload = (labType, file) => {
-    if (!file) return;
-    const data = { name: file.name, rawFile: file };
-    if (labType === 'A') setFileLabA(data);
-    else setFileLabB(data);
+  // Ekstrak tanggal & jam dari nama file (Mengabaikan penamaan format TOIEC/lainnya, fokus baca tanggal & jam)
+  const extractMetadataFromName = (filename) => {
+    const dateMatch = filename.match(/(\d{2}-\d{2}-\d{4})/);
+    const timeMatch = filename.match(/(\d{2}-\d{2}-\d{2})/);
+    return {
+      date: dateMatch ? dateMatch[1] : '28-10-2026',
+      time: timeMatch ? timeMatch[1].replace(/-/g, ':') : '09:00:00'
+    };
   };
 
-  const handleProcessAutoMapping = () => {
-    if (!fileLabA && !fileLabB) {
-      alert('Upload minimal 1 file hasil tes SSPECT!');
+  const isTimeInSessionRange = (timeStr, selectedSesi) => {
+    const hour = parseInt(timeStr.split(':')[0], 10);
+    if (selectedSesi === '1' && (hour >= 8 && hour < 10)) return true;
+    if (selectedSesi === '2' && (hour >= 10 && hour < 12)) return true;
+    if (selectedSesi === '3' && (hour >= 13 && hour < 16)) return true;
+    return false;
+  };
+
+  const handleUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const meta = extractMetadataFromName(file.name);
+      
+      if (!isTimeInSessionRange(meta.time, sesi)) {
+        setErrorMessage(`Validasi Gagal! Jam pada file (${meta.time}) di luar rentang Sesi ${sesi} yang dipilih.`);
+        return;
+      }
+
+      setUploadedFile(file);
+      setFileMeta(meta);
+      setErrorMessage('');
+    }
+  };
+
+  const handleProcessMapping = () => {
+    if (!uploadedFile) {
+      setErrorMessage('Harap unggah file hasil test SSPECT terlebih dahulu!');
       return;
     }
 
-    // Simulasi Hasil Auto Mapping SSPECT
-    const mockMappedData = Array.from({ length: 25 }, (_, i) => ({
-      idMeja: `STUDENT${String(i + 1).padStart(2, '0')}`,
-      nim: `2461510${String(i + 1).padStart(2, '0')}`,
-      nama: `MAHASISWA TERJADWAL ${i + 1}`,
-      score: Math.floor(Math.random() * (500 - 300 + 1)) + 300
-    }));
-
-    const mockUnbound = [
-      { idMeja: 'STUDENT26', score: 450, nim: '', nama: '' }
-    ];
-
-    setHasilMapping(mockMappedData);
-    setUnboundMhs(mockUnbound);
-    alert('Auto Mapping SSPECT Berhasil!');
-  };
-
-  const handleBindNim = (idMeja) => {
-    const nimInput = inputNimBind[idMeja];
-    if (!nimInput) {
-      alert('Masukkan NIM terlebih dahulu!');
+    const keyCheck = `SSPECT-${lab}-Sesi${sesi}-${fileMeta.date}`;
+    if (processedDatabase.includes(keyCheck)) {
+      setErrorMessage(`PENGAMBILAN DITOLAK! Data SSPECT untuk ${lab} Sesi ${sesi} tanggal ${fileMeta.date} sudah pernah dicocokkan sebelumnya.`);
       return;
     }
 
-    const updatedUnbound = unboundMhs.filter(u => u.idMeja !== idMeja);
-    const targetStudent = unboundMhs.find(u => u.idMeja === idMeja);
-
-    setUnboundMhs(updatedUnbound);
-    setHasilMapping([
-      ...hasilMapping, 
-      { ...targetStudent, nim: nimInput, nama: `MAHASISWA SUSULAN (${nimInput})` }
-    ]);
-    alert(`Berhasil BINDing NIM ${nimInput}!`);
+    setErrorMessage('');
+    setIsMatched(true);
+    setProcessedDatabase([...processedDatabase, keyCheck]);
   };
+
+  const [mappingData] = useState([
+    { no: 1, nim: '210102045', nama: 'Lissa Anantha', skor: 480, status: 'LULUS' },
+    { no: 2, nim: '210102046', nama: 'Ahmad Fauzi', skor: 390, status: 'REMEDIAL' }
+  ]);
 
   return (
-    <Grid container spacing={3}>
-      <Grid item xs={12}>
-        <MainCard title="Modul Hasil Test: UPA BAHASA (SSPECT)">
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Upload 1 file hasil tes SSPECT per Lab. Sistem akan membaca data nilai dan mencocokkan secara otomatis ke jadwal terdaftar.
-          </Alert>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1 }}>
+        Modul Upload Hasil Test - SSPECT
+      </Typography>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+        Upload 1 file Excel bersih hasil kalkulasi SSPECT dengan validasi jam sesi otomatis.
+      </Typography>
 
-          {/* UPLOAD AREA */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={6}>
-              <Paper elevation={2} sx={{ p: 2, borderTop: '4px solid #1e88e5' }}>
-                <Typography variant="h4" color="primary" sx={{ mb: 2 }}>📍 LAB KOMPUTER BAHASA A</Typography>
-                <Card variant="outlined" sx={{ p: 2, bgcolor: fileLabA ? '#f0fdf4' : '#fff' }}>
-                  {fileLabA ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold' }}>✓ {fileLabA.name}</Typography>
-                      <IconButton size="small" color="error" onClick={() => setFileLabA(null)}><DeleteIcon /></IconButton>
-                    </Box>
-                  ) : (
-                    <Button variant="outlined" component="label" fullWidth startIcon={<CloudUploadIcon />} sx={{ borderStyle: 'dashed' }}>
-                      Upload File SSPECT Lab A
-                      <input type="file" hidden accept=".xlsx, .xls" onChange={(e) => handleUpload('A', e.target.files[0])} />
-                    </Button>
-                  )}
-                </Card>
-              </Paper>
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField select fullWidth size="small" label="Pilih Ruang Lab" value={lab} onChange={(e) => setLab(e.target.value)}>
+                <MenuItem value="Lab A">Lab Komputer Bahasa A</MenuItem>
+                <MenuItem value="Lab B">Lab Komputer Bahasa B</MenuItem>
+              </TextField>
             </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Paper elevation={2} sx={{ p: 2, borderTop: '4px solid #2e7d32' }}>
-                <Typography variant="h4" color="success.main" sx={{ mb: 2 }}>📍 LAB KOMPUTER BAHASA B</Typography>
-                <Card variant="outlined" sx={{ p: 2, bgcolor: fileLabB ? '#f0fdf4' : '#fff' }}>
-                  {fileLabB ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold' }}>✓ {fileLabB.name}</Typography>
-                      <IconButton size="small" color="error" onClick={() => setFileLabB(null)}><DeleteIcon /></IconButton>
-                    </Box>
-                  ) : (
-                    <Button variant="outlined" component="label" color="success" fullWidth startIcon={<CloudUploadIcon />} sx={{ borderStyle: 'dashed' }}>
-                      Upload File SSPECT Lab B
-                      <input type="file" hidden accept=".xlsx, .xls" onChange={(e) => handleUpload('B', e.target.files[0])} />
-                    </Button>
-                  )}
-                </Card>
-              </Paper>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField select fullWidth size="small" label="Pilih Sesi Ujian" value={sesi} onChange={(e) => setSesi(e.target.value)}>
+                <MenuItem value="1">Sesi 1 (08:00 - 10:00)</MenuItem>
+                <MenuItem value="2">Sesi 2 (10:00 - 12:00)</MenuItem>
+                <MenuItem value="3">Sesi 3 (13:00 - 15:00)</MenuItem>
+              </TextField>
             </Grid>
           </Grid>
+        </CardContent>
+      </Card>
 
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Button variant="contained" color="primary" size="large" onClick={handleProcessAutoMapping} sx={{ px: 4, py: 1.2, fontWeight: 'bold' }}>
-              🔄 PROSES AUTO MAPPING SSPECT
-            </Button>
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Upload File Excel SSPECT</Typography>
+          {errorMessage && <Alert severity="error" icon={<IconAlertCircle />} sx={{ mb: 2 }}>{errorMessage}</Alert>}
+
+          <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
+            {uploadedFile ? (
+              <Box>
+                <Typography variant="body2">{uploadedFile.name}</Typography>
+                <Chip label={`Tgl: ${fileMeta.date} | Jam: ${fileMeta.time}`} size="small" color="success" sx={{ my: 1 }} />
+                <br />
+                <IconButton color="error" onClick={() => setUploadedFile(null)}><IconTrash size={20} /></IconButton>
+              </Box>
+            ) : (
+              <Button component="label" variant="outlined" startIcon={<IconUpload />} size="small">
+                Pilih File Excel SSPECT
+                <input type="file" hidden accept=".xlsx, .xls" onChange={handleUpload} />
+              </Button>
+            )}
+          </Paper>
+
+          <Box sx={{ mt: 3, textAlign: 'right' }}>
+            <Button variant="contained" color="primary" onClick={handleProcessMapping}>Validasi & Proses Data</Button>
           </Box>
+        </CardContent>
+      </Card>
 
-          {/* UNBOUND STUDENT */}
-          {unboundMhs.length > 0 && (
-            <Paper elevation={3} sx={{ p: 2, mb: 4, bgcolor: '#fffde7', border: '1px solid #ffe082' }}>
-              <Typography variant="h4" color="warning.dark" sx={{ mb: 1 }}>⚠️ UNBOUND STUDENT DETECTED</Typography>
-              {unboundMhs.map((u) => (
-                <Box key={u.idMeja} sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#fff', p: 1.5, borderRadius: 1 }}>
-                  <Chip label={`ID Meja: ${u.idMeja}`} color="warning" />
-                  <Typography variant="body2">Nilai SSPECT: <b>{u.score}</b></Typography>
-                  <TextField size="small" placeholder="Masukkan NIM Mhs..." value={inputNimBind[u.idMeja] || ''} onChange={(e) => setInputNimBind({ ...inputNimBind, [u.idMeja]: e.target.value })} sx={{ width: 200, ml: 'auto' }} />
-                  <Button variant="contained" color="warning" size="small" onClick={() => handleBindNim(u.idMeja)}>BIND NIM</Button>
-                </Box>
-              ))}
-            </Paper>
-          )}
-
-          {/* REKAP TABEL */}
-          {hasilMapping.length > 0 && (
-            <Paper elevation={2} sx={{ p: 2 }}>
-              <Typography variant="h4" sx={{ mb: 2 }}>📊 REKAP HASIL AUTO MAPPING SSPECT</Typography>
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                    <TableRow>
-                      <TableCell><b>ID Meja</b></TableCell>
-                      <TableCell><b>NIM</b></TableCell>
-                      <TableCell><b>Nama Mahasiswa</b></TableCell>
-                      <TableCell align="center"><b>Score SSPECT</b></TableCell>
+      {isMatched && (
+        <Card>
+          <CardContent>
+            <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Hasil Mapping SSPECT</Typography>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead sx={{ backgroundColor: '#f8fafc' }}>
+                  <TableRow>
+                    <TableCell>No</TableCell>
+                    <TableCell>NIM</TableCell>
+                    <TableCell>Nama Mahasiswa</TableCell>
+                    <TableCell align="center">Skor Total</TableCell>
+                    <TableCell align="center">Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {mappingData.map((row, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{row.no}</TableCell>
+                      <TableCell>{row.nim}</TableCell>
+                      <TableCell>{row.nama}</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>{row.skor}</TableCell>
+                      <TableCell align="center"><Chip label={row.status} color="success" size="small" /></TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {hasilMapping.map((row) => (
-                      <TableRow key={row.idMeja} hover>
-                        <TableCell><Chip label={row.idMeja} size="small" variant="outlined" /></TableCell>
-                        <TableCell>{row.nim}</TableCell>
-                        <TableCell><b>{row.nama}</b></TableCell>
-                        <TableCell align="center"><Chip label={row.score} color="primary" size="small" sx={{ fontWeight: 'bold' }} /></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          )}
-
-        </MainCard>
-      </Grid>
-    </Grid>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
+    </Box>
   );
-};
-
-export default HasilTestSSPECT;
+}

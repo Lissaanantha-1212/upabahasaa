@@ -1,5 +1,5 @@
 // assets
-import { IconCalendarEvent, IconUpload, IconCalculator, IconSend, IconFileInfo} from '@tabler/icons-react';
+import { IconCalendarEvent, IconUpload, IconCalculator, IconSend, IconFileInfo, IconFolderOpen} from '@tabler/icons-react';
 
 // constant
 const icons = {
@@ -7,7 +7,8 @@ const icons = {
   IconUpload,
   IconCalculator,
   IconSend,
-  IconFileInfo
+  IconFileInfo,
+  IconFolderOpen
 };
 
 // ==============================|| EXTRA PAGES MENU ITEMS ||============================== //
@@ -93,16 +94,16 @@ const Layanan = {
       ]
     },
     {
-      id: 'Pengajuan',
-      title: 'Pengajuan',
+      id: 'Rekapan',
+      title: 'Rekapan',
       type: 'collapse',
-      icon: icons.IconSend,
+      icon: icons.IconFolderOpen,
       children: [
         {
-          id: 'Pengajuan Approval',
-          title: 'Pengajuan Approval',
+          id: 'Rekapan Hasil Test',
+          title: 'Rekapan Hasil Test',
           type: 'item',
-          url: '/pages/pengajuan-approval',
+          url: '/pages/rekapan',
           target: true
         }
       ]

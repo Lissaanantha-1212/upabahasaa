@@ -5,8 +5,6 @@ import Loadable from 'ui-component/Loadable';
 import MainLayout from 'layout/MainLayout';
 
 
-
-
 // penjadwalan routing
 const JadwalTestPage = Loadable(lazy(() => import('views/pages/jadwal-test')));
 const JadwalRemedialPage = Loadable(lazy(() => import('views/pages/jadwal-remedial')));
@@ -16,6 +14,12 @@ const JadwalKursusPage = Loadable(lazy(() => import('views/pages/jadwal-kursus')
 const HasilTestTOEFLPage = Loadable(lazy(() => import('views/pages/hasil-test/toefl')));
 const HasilTestSSPECTPage = Loadable(lazy(() => import('views/pages/hasil-test/sspect')));
 const HasilTestTOEICPage = Loadable(lazy(() => import('views/pages/hasil-test/toeic')));
+
+// kalkulasi routing
+const ModulKonversiPage = Loadable(lazy(() => import('views/pages/konversi')));
+
+// rekapan
+const ModulRekapanPage = Loadable(lazy(() => import('views/pages/rekapan')));
 
 // dashboard routing
 const DashboardDefault = Loadable(lazy(() => import('views/dashboard/Default')));
@@ -86,8 +90,17 @@ const MainRoutes = {
     {
       path: '/pages/toeic',
       element: <HasilTestTOEICPage />
-  }
+    },
+    {
+    path: '/pages/rekapan',
+    element: <ModulRekapanPage />
+    },
+    {
+      path: '/pages/konversi',
+      element: <ModulKonversiPage />
+    }
   ]
 };
 
 export default MainRoutes;
+

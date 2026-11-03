@@ -3,70 +3,130 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. GET: Ambil Semua Log Histori Penjadwalan Sesi Dikunci
+// GET: Ambil Log Jadwal Resmi
 router.get('/log-jadwal', async (req, res) => {
   try {
     const logs = await prisma.jadwalTes.findMany({
       include: {
         pesertaJadwal: {
-          include: { mahasiswa: true }
+          include: {
+            mahasiswa: true
+          }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { id: 'desc' }
     });
     res.json(logs);
   } catch (error) {
+    console.error('Error Fetch Log Jadwal:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 2. POST: Simpan & Kunci Sesi Ujian ke Database (Dengan Proteksi Bentrok Sesi & Lab)
+// POST: Kunci Sesi Ujian (Validasi Ketat Kapasitas Lab B < 30, Kelas Duplikat, & Bentrok Lab)
 router.post('/kunci-sesi', async (req, res) => {
-  const { namaKelas, jurusan, tanggal, sesi, lab, jenisTest, mahasiswa } = req.body;
-
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      // Buat Header JadwalTes
-      const newJadwal = await tx.jadwalTes.create({
-        data: {
-          namaKelas,
-          tanggal: new Date(tanggal),
-          sesi,
-          lab,
-          jenisTes: jenisTest,
-          isLocked: true
-        }
-      });
+    const { namaKelas, jurusan, tanggal, sesi, lab, jenisTest, mahasiswa } = req.body;
+    const tglTarget = new Date(tanggal);
+    const namaKelasClean = (namaKelas || '').trim().toUpperCase();
+    const jumlahPeserta = mahasiswa ? mahasiswa.length : 0;
 
-      // Insert/Update Data Mahasiswa & Hubungkan PesertaJadwal
+    // ATURAN KAPASITAS LAB B: Harus di bawah 30 mahasiswa (< 30)
+    if (lab === 'Lab Komputer Bahasa B' && jumlahPeserta >= 30) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `GAGAL KAPASITAS! Lab Komputer Bahasa B maksimal peserta harus DI BAWAH 30 mahasiswa. Kelas "${namaKelasClean}" memiliki ${jumlahPeserta} mahasiswa, jadi tidak boleh menggunakan Lab B. Silahkan gunakan Lab A atau kurangi jumlah mahasiswa!` 
+      });
+    }
+
+    // ATURAN KELAS DUPLIKAT: Kelas yang sama tidak boleh dijadwalkan ulang
+    const existingKelas = await prisma.jadwalTes.findFirst({
+      where: {
+        kelas: {
+          equals: namaKelasClean
+        }
+      }
+    });
+
+    if (existingKelas) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `GAGAL! Kelas "${namaKelasClean}" sudah pernah dijadwalkan sebelumnya dan tidak boleh diduplikasi.` 
+      });
+    }
+
+    // ATURAN BENTROK RUANGAN: Sesi & Lab yang sama di tanggal tersebut tidak boleh dipakai kelas lain
+    const existingLabSesi = await prisma.jadwalTes.findFirst({
+      where: {
+        tanggal: tglTarget,
+        sesi: sesi,
+        lab: lab
+      }
+    });
+
+    if (existingLabSesi) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `BENTROK RUANGAN! ${lab} pada ${sesi} di tanggal ini sudah digunakan oleh kelas "${existingLabSesi.kelas}".` 
+      });
+    }
+
+    // Simpan Jadwal ke Database Aiven
+    const newJadwal = await prisma.jadwalTes.create({
+      data: {
+        kelas: namaKelasClean,
+        tanggal: tglTarget,
+        sesi: sesi,
+        lab: lab,
+        jenisTes: jenisTest || 'TOEFL',
+        isLocked: true,
+        dibuatOleh: 'Staf UPA Bahasa'
+      }
+    });
+
+    if (mahasiswa && Array.isArray(mahasiswa)) {
       for (const mhs of mahasiswa) {
-        await tx.mahasiswa.upsert({
-          where: { nim: mhs.nim },
-          update: { nama: mhs.nama, jurusan: jurusan, prodi: jurusan },
+        const mhsRecord = await prisma.mahasiswa.upsert({
+          where: { nim: String(mhs.nim) },
+          update: { nama: mhs.nama },
           create: {
-            nim: mhs.nim,
+            nim: String(mhs.nim),
             nama: mhs.nama,
-            jurusan: jurusan,
-            prodi: jurusan,
-            angkatan: 2024
+            prodi: mhs.prodi || jurusan || 'TEKNIK INFORMATIKA',
+            jurusan: jurusan || 'TEKNIK INFORMATIKA',
+            angkatan: 2024,
+            semester: 1
           }
         });
 
-        await tx.pesertaJadwal.create({
+        await prisma.pesertaJadwal.create({
           data: {
             idJadwal: newJadwal.id,
-            nim: mhs.nim,
-            idMeja: mhs.idMeja
+            nim: mhsRecord.nim,
+            idMeja: mhs.idMeja || `STUDENT${String(mhs.id || 1).padStart(2, '0')}`
           }
         });
       }
+    }
 
-      return newJadwal;
-    });
-
-    res.json({ success: true, message: 'Penjadwalan berhasil dikunci dan tersimpan di database Aiven!', data: result });
+    res.json({ success: true, message: 'Berhasil dikunci ke DB Aiven!', data: newJadwal });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    console.error('Error Kunci Sesi:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE: Hapus Data Jadwal dari Database Aiven
+router.delete('/hapus-jadwal/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.jadwalTes.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ success: true, message: 'Jadwal berhasil dihapus dari Database Aiven.' });
+  } catch (error) {
+    console.error('Error Hapus Jadwal:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
